@@ -4,6 +4,12 @@ Static downloadable resources for CrossMux. Dictionary metadata and StarDict
 files are reviewed here, then published as immutable GitHub Releases and mirrored
 byte-for-byte to Gitee.
 
+International CrossMux APIs read releases from
+[`0x1abin/crossmux-assets`](https://github.com/0x1abin/crossmux-assets). The China API reads the
+matching releases from [`x1abin/crossmux-assets`](https://gitee.com/x1abin/crossmux-assets). Both
+deployments expose the selected Release directory to devices; they do not proxy dictionary files
+or fall back to the other repository.
+
 ## Dictionaries
 
 Source layout:
@@ -30,4 +36,5 @@ python3 scripts/build_dictionary_release.py --output-dir /tmp/crossmux-dictionar
 
 Release tags use `dictionaries-m1-r<N>`. The workflow uploads data files first
 and `dictionaries.json` last; clients ignore releases without a complete
-manifest.
+manifest. GitHub stays draft and Gitee stays prerelease until their uploaded files pass SHA-256
+verification against the same staged release.
