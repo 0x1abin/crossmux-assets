@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "revision": 2,
+  "dictionaries": [
+    {
+      "id": "freedict-en-zh",
+      "name": "FreeDict English → Chinese",
+      "description": "English-Chinese definitions from FreeDict and WikDict, normalized for CrossMux",
+      "languages": ["en", "zh"],
+      "revision": 1,
+      "license": {
+        "name": "CC BY-SA 3.0",
+        "url": "https://creativecommons.org/licenses/by-sa/3.0/"
+      },
+      "sourceUrl": "https://download.freedict.org/dictionaries/eng-zho/2025.11.23/freedict-eng-zho-2025.11.23.stardict.tar.xz"
+    },
+    {
+      "id": "oewn-en-en",
+      "name": "Open English WordNet 2025",
+      "description": "English definitions from Open English WordNet 2025, normalized for CrossMux",
+      "languages": ["en"],
+      "revision": 1,
+      "license": {
+        "name": "CC BY 4.0",
+        "url": "https://creativecommons.org/licenses/by/4.0/"
+      },
+      "sourceUrl": "https://en-word.net/static/english-wordnet-2025.zip"
+    }
+  ]
+}
