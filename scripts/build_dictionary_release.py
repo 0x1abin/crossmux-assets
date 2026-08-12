@@ -4,10 +4,12 @@
 from __future__ import annotations
 
 import argparse
+import gzip
 import hashlib
 import json
 import re
 import shutil
+import struct
 import sys
 import zlib
 from pathlib import Path
@@ -17,8 +19,11 @@ MANIFEST_VERSION = 1
 MAX_DICTIONARIES = 64
 MAX_FILE_BYTES = 100_000_000
 MAX_REVISION = 0x7FFFFFFF
+MAX_HEADWORD_BYTES = 255
+MAX_DEFINITION_BYTES = 64 * 1024
 ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*$")
 LANGUAGE_RE = re.compile(r"^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$")
+ASCII_LOWER = bytes.maketrans(b"ABCDEFGHIJKLMNOPQRSTUVWXYZ", b"abcdefghijklmnopqrstuvwxyz")
 
 
 class BuildError(ValueError):
@@ -46,6 +51,59 @@ def sha256(path: Path) -> str:
         for chunk in iter(lambda: source.read(64 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def dictionary_data_size(path: Path) -> int:
+    if not path.name.endswith(".dict.dz"):
+        return path.stat().st_size
+    size = 0
+    try:
+        with gzip.open(path, "rb") as stream:
+            for chunk in iter(lambda: stream.read(64 * 1024), b""):
+                size += len(chunk)
+                if size > 0xFFFFFFFF:
+                    raise BuildError(f"{path.name}: uncompressed dictionary exceeds 32-bit offsets")
+    except OSError as exc:
+        raise BuildError(f"{path.name}: invalid dictzip stream: {exc}") from exc
+    return size
+
+
+def validate_index(dictionary_id: str, path: Path, data_size: int) -> None:
+    previous = None
+    entries = 0
+    with path.open("rb") as stream:
+        while True:
+            headword = bytearray()
+            while True:
+                value = stream.read(1)
+                if not value:
+                    if not headword:
+                        if entries == 0:
+                            raise BuildError(f"{dictionary_id}: empty .idx")
+                        return
+                    raise BuildError(f"{dictionary_id}: truncated .idx headword")
+                if value == b"\0":
+                    break
+                headword.extend(value)
+                if len(headword) > MAX_HEADWORD_BYTES:
+                    raise BuildError(f"{dictionary_id}: .idx headword exceeds {MAX_HEADWORD_BYTES} bytes")
+            if not headword:
+                raise BuildError(f"{dictionary_id}: empty .idx headword")
+            try:
+                headword.decode("utf-8")
+            except UnicodeDecodeError as exc:
+                raise BuildError(f"{dictionary_id}: .idx headword is not UTF-8") from exc
+            suffix = stream.read(8)
+            if len(suffix) != 8:
+                raise BuildError(f"{dictionary_id}: truncated .idx record")
+            offset, size = struct.unpack(">II", suffix)
+            if size == 0 or size > MAX_DEFINITION_BYTES or offset > data_size or size > data_size - offset:
+                raise BuildError(f"{dictionary_id}: .idx definition range is invalid")
+            key = bytes(headword).translate(ASCII_LOWER)
+            if previous is not None and key <= previous:
+                raise BuildError(f"{dictionary_id}: .idx is not strictly ASCII-case-insensitive sorted")
+            previous = key
+            entries += 1
 
 
 def load_catalog(path: Path) -> dict:
@@ -144,9 +202,21 @@ def dictionary_files(root: Path, dictionary_id: str) -> list[Path]:
         if size == 0 or size >= MAX_FILE_BYTES:
             raise BuildError(f"{dictionary_id}: {path.name} must be 1-{MAX_FILE_BYTES - 1} bytes")
     if ifo.is_file():
-        with ifo.open("r", encoding="utf-8", errors="replace") as stream:
-            if any(re.fullmatch(r"idxoffsetbits\s*=\s*64\s*", line, re.IGNORECASE) for line in stream):
-                raise BuildError(f"{dictionary_id}: 64-bit index offsets are unsupported")
+        metadata = {}
+        try:
+            with ifo.open("r", encoding="utf-8", errors="strict") as stream:
+                for line in stream:
+                    key, separator, value = line.rstrip("\r\n").partition("=")
+                    if separator:
+                        metadata[key.strip().lower()] = value.strip()
+        except UnicodeError as exc:
+            raise BuildError(f"{dictionary_id}: .ifo is not UTF-8") from exc
+        if metadata.get("idxoffsetbits") == "64":
+            raise BuildError(f"{dictionary_id}: 64-bit index offsets are unsupported")
+        if metadata.get("sametypesequence") != "m":
+            raise BuildError(f"{dictionary_id}: .ifo must declare sametypesequence=m")
+    data_file = plain if plain.is_file() else compressed
+    validate_index(dictionary_id, idx, dictionary_data_size(data_file))
     return files
 
 

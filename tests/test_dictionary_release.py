@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import json
 import sys
 import tempfile
@@ -42,14 +43,16 @@ class DictionaryReleaseTest(unittest.TestCase):
     def write_dictionary(self, dictionary_id: str = "wikdict-en-zh", *, ifo: str | None = None):
         directory = self.root / "dictionaries" / dictionary_id
         directory.mkdir(parents=True)
-        (directory / f"{dictionary_id}.idx").write_bytes(b"word\0\0\0\0\0\0\0\x04")
-        (directory / f"{dictionary_id}.dict.dz").write_bytes(b"definition")
+        (directory / f"{dictionary_id}.idx").write_bytes(
+            b"word\0" + (0).to_bytes(4, "big") + (4).to_bytes(4, "big")
+        )
+        (directory / f"{dictionary_id}.dict.dz").write_bytes(gzip.compress(b"definition", mtime=0))
         if ifo is not None:
             (directory / f"{dictionary_id}.ifo").write_text(ifo, encoding="utf-8")
 
     def test_builds_and_stages_manifest(self):
         catalog = self.write_catalog([self.entry(), self.entry("aaa")], revision=7)
-        self.write_dictionary(ifo="StarDict's dict ifo file\nidxoffsetbits=32\n")
+        self.write_dictionary(ifo="StarDict's dict ifo file\nidxoffsetbits=32\nsametypesequence=m\n")
         self.write_dictionary("aaa")
         manifest, files = release.build_manifest(self.root, catalog)
 
@@ -113,12 +116,12 @@ class DictionaryReleaseTest(unittest.TestCase):
 
     def test_rejects_bad_layout_64_bit_indexes_and_large_files(self):
         catalog = self.write_catalog([self.entry()])
-        self.write_dictionary(ifo="comment=" + "x" * 4096 + "\nidxoffsetbits=64\n")
+        self.write_dictionary(ifo="comment=" + "x" * 4096 + "\nidxoffsetbits=64\nsametypesequence=m\n")
         with self.assertRaisesRegex(release.BuildError, "64-bit"):
             release.build_manifest(self.root, catalog)
 
         ifo = self.root / "dictionaries" / "wikdict-en-zh" / "wikdict-en-zh.ifo"
-        ifo.write_text("idxoffsetbits=32\n", encoding="utf-8")
+        ifo.write_text("idxoffsetbits=32\nsametypesequence=m\n", encoding="utf-8")
         extra = ifo.parent / "unexpected.syn"
         extra.write_bytes(b"x")
         with self.assertRaisesRegex(release.BuildError, "unexpected files"):
@@ -142,6 +145,38 @@ class DictionaryReleaseTest(unittest.TestCase):
         data.write_bytes(b"definition")
         (ifo.parent / "nested").mkdir()
         with self.assertRaisesRegex(release.BuildError, "unexpected files"):
+            release.build_manifest(self.root, catalog)
+
+    def test_rejects_invalid_index_ranges_order_and_definition_size(self):
+        catalog = self.write_catalog([self.entry()])
+        self.write_dictionary(ifo="sametypesequence=m\n")
+        directory = self.root / "dictionaries" / "wikdict-en-zh"
+        index = directory / "wikdict-en-zh.idx"
+
+        index.write_bytes(b"word\0" + (100).to_bytes(4, "big") + (4).to_bytes(4, "big"))
+        with self.assertRaisesRegex(release.BuildError, "range"):
+            release.build_manifest(self.root, catalog)
+
+        index.write_bytes(
+            b"zoo\0\0\0\0\0\0\0\0\x04" + b"apple\0\0\0\0\0\0\0\0\x04"
+        )
+        with self.assertRaisesRegex(release.BuildError, "sorted"):
+            release.build_manifest(self.root, catalog)
+
+        index.write_bytes(
+            b"word\0" + (0).to_bytes(4, "big") + (release.MAX_DEFINITION_BYTES + 1).to_bytes(4, "big")
+        )
+        with self.assertRaisesRegex(release.BuildError, "range"):
+            release.build_manifest(self.root, catalog)
+
+        index.write_bytes(b"word\0\0\0\0\0")
+        with self.assertRaisesRegex(release.BuildError, "truncated"):
+            release.build_manifest(self.root, catalog)
+
+    def test_rejects_non_plain_ifo(self):
+        catalog = self.write_catalog([self.entry()])
+        self.write_dictionary(ifo="sametypesequence=h\n")
+        with self.assertRaisesRegex(release.BuildError, "sametypesequence=m"):
             release.build_manifest(self.root, catalog)
 
 
