@@ -15,6 +15,7 @@ import tarfile
 import tempfile
 import urllib.request
 import zipfile
+import zlib
 from collections import defaultdict
 from dataclasses import dataclass
 from html.parser import HTMLParser
@@ -261,6 +262,7 @@ def write_stardict(
     name: str,
     date: str,
     description: str,
+    dictzip: bool = False,
 ) -> None:
     directory = output_root / dictionary_id
     directory.mkdir(parents=True, exist_ok=True)
@@ -277,7 +279,13 @@ def write_stardict(
         dictionary.extend(definition)
 
     (directory / f"{dictionary_id}.idx").write_bytes(index)
-    (directory / f"{dictionary_id}.dict").write_bytes(dictionary)
+    plain_path = directory / f"{dictionary_id}.dict"
+    dictzip_path = directory / f"{dictionary_id}.dict.dz"
+    (plain_path if dictzip else dictzip_path).unlink(missing_ok=True)
+    if dictzip:
+        write_dictzip(dictzip_path, dictionary)
+    else:
+        plain_path.write_bytes(dictionary)
     ifo = (
         "StarDict's dict ifo file\n"
         "version=3.0.0\n"
@@ -289,6 +297,26 @@ def write_stardict(
         f"description={description}\n"
     )
     (directory / f"{dictionary_id}.ifo").write_text(ifo, encoding="utf-8")
+
+
+def write_dictzip(path: Path, data: bytes, chunk_length: int = 58315) -> None:
+    chunks = []
+    compressor = zlib.compressobj(9, zlib.DEFLATED, -zlib.MAX_WBITS)
+    for offset in range(0, len(data), chunk_length):
+        chunk = compressor.compress(data[offset : offset + chunk_length])
+        last = offset + chunk_length >= len(data)
+        chunk += compressor.flush(zlib.Z_FINISH if last else zlib.Z_FULL_FLUSH)
+        if len(chunk) > 0xFFFF:
+            raise ImportError("dictzip compressed chunk exceeds 65535 bytes")
+        chunks.append(chunk)
+
+    ra = struct.pack("<HHH", 1, chunk_length, len(chunks)) + b"".join(
+        struct.pack("<H", len(chunk)) for chunk in chunks
+    )
+    extra = b"RA" + struct.pack("<H", len(ra)) + ra
+    header = b"\x1f\x8b\x08\x04\0\0\0\0\0\x03" + struct.pack("<H", len(extra)) + extra
+    trailer = struct.pack("<II", zlib.crc32(data) & 0xFFFFFFFF, len(data) & 0xFFFFFFFF)
+    path.write_bytes(header + b"".join(chunks) + trailer)
 
 
 def verify_source(source: Source, path: Path) -> None:
@@ -338,6 +366,7 @@ def build_resources(source_dir: Path, output_root: Path) -> None:
         import_ecdict(sources["ecdict-en-zh"]),
         name="ECDICT English-Chinese",
         date="2026-08-13",
+        dictzip=True,
         description=(
             "ECDICT base CSV at commit 82c9872576b23118d7c42e920c11beb77f510ae2, converted to "
             "plain-text StarDict by CrossMux. MIT License. Copyright (c) 2025 Linwei. Permission is "

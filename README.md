@@ -40,6 +40,8 @@ HTML is converted to text and duplicate headwords are merged because CrossMux
 does not render StarDict HTML or load `.syn` files. ECDICT keeps its phonetics
 and complete Chinese translations while omitting the English definitions,
 exam tags and frequency metadata. ECDICT is Copyright (c) 2025 Linwei.
+Its definition data uses dictzip compression so the China mirror can transfer
+the large resource reliably while retaining random-access lookups on devices.
 
 Rebuild from the pinned upstream sources and compare the result with the
 checked-in resources:
