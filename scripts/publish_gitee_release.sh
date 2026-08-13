@@ -47,12 +47,14 @@ for asset in "$@"; do
     manifest="$asset"
     continue
   fi
-  uploaded="$(curl -fsS --connect-timeout 30 --max-time "$transfer_timeout" -X POST "${api}/releases/${release_id}/attach_files" \
+  echo "Uploading $(basename "$asset")"
+  uploaded="$(curl -fsS --http1.1 -H "Expect:" --connect-timeout 30 --max-time "$transfer_timeout" -X POST "${api}/releases/${release_id}/attach_files" \
     -F "access_token=${GITEE_TOKEN}" -F "file=@${asset}")"
   verify_upload "$asset" "$uploaded"
 done
 [ -n "$manifest" ] || { echo "dictionaries.json is required" >&2; exit 1; }
-uploaded="$(curl -fsS --connect-timeout 30 --max-time "$transfer_timeout" -X POST "${api}/releases/${release_id}/attach_files" \
+echo "Uploading $(basename "$manifest")"
+uploaded="$(curl -fsS --http1.1 -H "Expect:" --connect-timeout 30 --max-time "$transfer_timeout" -X POST "${api}/releases/${release_id}/attach_files" \
   -F "access_token=${GITEE_TOKEN}" -F "file=@${manifest}")"
 verify_upload "$manifest" "$uploaded"
 
