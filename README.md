@@ -26,28 +26,31 @@ ASCII letters, digits, `_` or `-`, at most 31 bytes. StarDict indexes must be
 uncompressed and use 32-bit offsets. Individual files must be smaller than
 100,000,000 bytes so the release can be mirrored to Gitee.
 
-The initial catalog contains:
+The catalog contains:
 
 | ID | Source version | Headwords | License |
 | --- | --- | ---: | --- |
+| `ecdict-en-zh` | ECDICT `82c9872` | 768,739 | MIT |
 | `oewn-en-en` | Open English WordNet 2025 | 131,603 | CC BY 4.0 |
 | `freedict-en-zh` | FreeDict/WikDict 2025.11.23 | 24,786 | CC BY-SA 3.0 |
 
 The checked-in resources are deterministic plain-text StarDict conversions.
 Open English WordNet exception forms are included as lookup aliases. FreeDict
 HTML is converted to text and duplicate headwords are merged because CrossMux
-does not render StarDict HTML or load `.syn` files.
+does not render StarDict HTML or load `.syn` files. ECDICT keeps its phonetics
+and complete Chinese translations while omitting the English definitions,
+exam tags and frequency metadata. ECDICT is Copyright (c) 2025 Linwei.
 
-Rebuild from the pinned upstream archives and compare the result with the
+Rebuild from the pinned upstream sources and compare the result with the
 checked-in resources:
 
 ```sh
 python3 scripts/import_dictionary_sources.py --check
 ```
 
-For an offline rebuild, place the two archive filenames declared in the import
+For an offline rebuild, place the three source filenames declared in the import
 script in one directory and pass `--source-dir <directory>`. The importer checks
-these SHA-256 values before reading either archive:
+these SHA-256 values before reading any source:
 
 ```text
 english-wordnet-2025.zip
@@ -55,6 +58,9 @@ english-wordnet-2025.zip
 
 freedict-eng-zho-2025.11.23.stardict.tar.xz
 9dbae6bb5558906cc05f1e573bee2deab8b6e09adfb16fc496288926882435af
+
+ecdict.csv
+1a6947e04785db63613a92e14903cdae7954f7e84860b10e68e5c7cbb3f9c3cf
 ```
 
 Validate and stage a release without network access:

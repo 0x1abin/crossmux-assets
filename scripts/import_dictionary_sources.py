@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import filecmp
 import gzip
 import hashlib
@@ -46,6 +47,15 @@ SOURCES = (
             "freedict-eng-zho-2025.11.23.stardict.tar.xz"
         ),
         sha256="9dbae6bb5558906cc05f1e573bee2deab8b6e09adfb16fc496288926882435af",
+    ),
+    Source(
+        dictionary_id="ecdict-en-zh",
+        filename="ecdict.csv",
+        url=(
+            "https://raw.githubusercontent.com/skywind3000/ECDICT/"
+            "82c9872576b23118d7c42e920c11beb77f510ae2/ecdict.csv"
+        ),
+        sha256="1a6947e04785db63613a92e14903cdae7954f7e84860b10e68e5c7cbb3f9c3cf",
     ),
 )
 
@@ -168,6 +178,20 @@ def import_freedict(archive: Path) -> dict[str, list[str]]:
         except UnicodeDecodeError as exc:
             raise ImportError(f"FreeDict definition is not UTF-8: {headword!r}") from exc
         append_definition(entries, headword, html_to_text(definition))
+    return entries
+
+
+def import_ecdict(source: Path) -> dict[str, list[str]]:
+    entries: dict[str, list[str]] = defaultdict(list)
+    with source.open("r", encoding="utf-8", newline="") as stream:
+        for row in csv.DictReader(stream):
+            headword = row.get("word", "").strip()
+            translation = row.get("translation", "").replace("\\n", "\n").strip()
+            if not headword or not translation:
+                continue
+            phonetic = row.get("phonetic", "").strip()
+            definition = f"/{phonetic}/\n{translation}" if phonetic else translation
+            append_definition(entries, headword, definition)
     return entries
 
 
@@ -306,6 +330,29 @@ def build_resources(source_dir: Path, output_root: Path) -> None:
         description=(
             "FreeDict and WikDict English-Chinese 2025.11.23, CC BY-SA 3.0, converted to plain-text "
             "StarDict by CrossMux; source: https://freedict.org/downloads/"
+        ),
+    )
+    write_stardict(
+        output_root,
+        "ecdict-en-zh",
+        import_ecdict(sources["ecdict-en-zh"]),
+        name="ECDICT English-Chinese",
+        date="2026-08-13",
+        description=(
+            "ECDICT base CSV at commit 82c9872576b23118d7c42e920c11beb77f510ae2, converted to "
+            "plain-text StarDict by CrossMux. MIT License. Copyright (c) 2025 Linwei. Permission is "
+            "hereby granted, free of charge, to any person obtaining a copy of this software and "
+            "associated documentation files (the Software), to deal in the Software without "
+            "restriction, including without limitation the rights to use, copy, modify, merge, "
+            "publish, distribute, sublicense, and/or sell copies of the Software, and to permit "
+            "persons to whom the Software is furnished to do so, subject to the following "
+            "conditions: The above copyright notice and this permission notice shall be included "
+            "in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED AS IS, "
+            "WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE "
+            "WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. "
+            "IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR "
+            "OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT "
+            "OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE."
         ),
     )
 

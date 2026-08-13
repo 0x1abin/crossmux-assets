@@ -1,7 +1,19 @@
 {
   "version": 1,
-  "revision": 2,
+  "revision": 3,
   "dictionaries": [
+    {
+      "id": "ecdict-en-zh",
+      "name": "ECDICT English → Chinese",
+      "description": "English-Chinese definitions from the ECDICT base CSV, normalized for CrossMux",
+      "languages": ["en", "zh"],
+      "revision": 1,
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/skywind3000/ECDICT/blob/82c9872576b23118d7c42e920c11beb77f510ae2/LICENSE"
+      },
+      "sourceUrl": "https://raw.githubusercontent.com/skywind3000/ECDICT/82c9872576b23118d7c42e920c11beb77f510ae2/ecdict.csv"
+    },
     {
       "id": "freedict-en-zh",
       "name": "FreeDict English → Chinese",
