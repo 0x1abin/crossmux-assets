@@ -91,6 +91,16 @@ class DictionaryImportTest(unittest.TestCase):
             self.assertLess(index.index(b"apple\0"), index.index(b"Banana\0"))
             self.assertIn(b"sametypesequence=m", (first / "fixture.ifo").read_bytes())
 
+    def test_writes_deterministic_dictzip(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            data = (b"dictionary data\n" * 10000) + b"end"
+            importer.write_dictzip(root / "one.dz", data)
+            importer.write_dictzip(root / "two.dz", data)
+            self.assertEqual((root / "one.dz").read_bytes(), (root / "two.dz").read_bytes())
+            with gzip.open(root / "one.dz", "rb") as stream:
+                self.assertEqual(data, stream.read())
+
     def test_rejects_oversized_definition_and_bad_checksum(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
