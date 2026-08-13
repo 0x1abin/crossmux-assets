@@ -6,11 +6,18 @@ set -euo pipefail
 
 repo="$1"; tag="$2"; shift 2
 api="https://gitee.com/api/v5/repos/${repo}"
+transfer_timeout="${GITEE_TRANSFER_TIMEOUT:-1800}"
 existing="$(curl -fsS "${api}/releases/tags/${tag}?access_token=${GITEE_TOKEN}" 2>/dev/null || true)"
-[ -z "$(printf '%s' "$existing" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("id", ""))' 2>/dev/null || true)" ] || {
-  echo "release ${tag} already exists" >&2
-  exit 1
-}
+existing_id="$(printf '%s' "$existing" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("id", ""))' 2>/dev/null || true)"
+existing_prerelease="$(printf '%s' "$existing" | python3 -c 'import json,sys; print(str(json.load(sys.stdin).get("prerelease", False)).lower())' 2>/dev/null || true)"
+if [ -n "$existing_id" ]; then
+  if [ "${REPLACE_GITEE_PRERELEASE:-}" = 1 ] && [ "$existing_prerelease" = true ]; then
+    curl -fsS -X DELETE "${api}/releases/${existing_id}?access_token=${GITEE_TOKEN}" >/dev/null
+  else
+    echo "release ${tag} already exists" >&2
+    exit 1
+  fi
+fi
 
 created="$(curl -fsS -X POST "${api}/releases" \
   --data-urlencode "access_token=${GITEE_TOKEN}" \
@@ -28,7 +35,7 @@ verify_upload() {
   url="$(printf '%s' "$response" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("browser_download_url", ""))')"
   [ -n "$url" ] || { echo "Gitee asset upload returned no download URL" >&2; exit 1; }
   temp="$(mktemp)"
-  curl -fsSL --max-time 600 "$url" -o "$temp"
+  curl -fsSL --connect-timeout 30 --max-time "$transfer_timeout" "$url" -o "$temp"
   expected="$(sha256sum "$source" | cut -d' ' -f1)"
   actual="$(sha256sum "$temp" | cut -d' ' -f1)"
   rm -f "$temp"
@@ -40,12 +47,12 @@ for asset in "$@"; do
     manifest="$asset"
     continue
   fi
-  uploaded="$(curl -fsS --max-time 600 -X POST "${api}/releases/${release_id}/attach_files" \
+  uploaded="$(curl -fsS --connect-timeout 30 --max-time "$transfer_timeout" -X POST "${api}/releases/${release_id}/attach_files" \
     -F "access_token=${GITEE_TOKEN}" -F "file=@${asset}")"
   verify_upload "$asset" "$uploaded"
 done
 [ -n "$manifest" ] || { echo "dictionaries.json is required" >&2; exit 1; }
-uploaded="$(curl -fsS --max-time 600 -X POST "${api}/releases/${release_id}/attach_files" \
+uploaded="$(curl -fsS --connect-timeout 30 --max-time "$transfer_timeout" -X POST "${api}/releases/${release_id}/attach_files" \
   -F "access_token=${GITEE_TOKEN}" -F "file=@${manifest}")"
 verify_upload "$manifest" "$uploaded"
 

@@ -2,6 +2,12 @@ name: Publish dictionaries
 
 on:
   workflow_dispatch:
+    inputs:
+      gitee_only:
+        description: Replace an incomplete Gitee prerelease without republishing GitHub
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   publish:
@@ -25,6 +31,7 @@ jobs:
           revision="$(python3 -c 'import json; print(json.load(open("dist/dictionaries.json"))["revision"])')"
           echo "tag=dictionaries-m1-r${revision}" >> "$GITHUB_OUTPUT"
       - name: Publish immutable GitHub release
+        if: ${{ !inputs.gitee_only }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -36,6 +43,7 @@ jobs:
             xargs -0 gh release upload "$tag" --repo "$GITHUB_REPOSITORY"
           gh release upload "$tag" dist/dictionaries.json --repo "$GITHUB_REPOSITORY"
       - name: Verify GitHub release
+        if: ${{ !inputs.gitee_only }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -44,12 +52,14 @@ jobs:
           cd github-release
           sha256sum --check SHA256SUMS
       - name: Publish verified GitHub release
+        if: ${{ !inputs.gitee_only }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release edit "${{ steps.release.outputs.tag }}" --repo "$GITHUB_REPOSITORY" --draft=false
       - name: Mirror exact assets to Gitee
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          REPLACE_GITEE_PRERELEASE: ${{ inputs.gitee_only && '1' || '' }}
         run: |
           mapfile -d '' assets < <(find dist -maxdepth 1 -type f ! -name dictionaries.json -print0 | sort -z)
           assets+=(dist/dictionaries.json)
