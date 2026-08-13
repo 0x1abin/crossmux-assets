@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import gzip
 import io
 import struct
@@ -58,6 +59,19 @@ class DictionaryImportTest(unittest.TestCase):
 
             entries = importer.import_freedict(archive)
             self.assertEqual(["first & one", "second"], entries["book"])
+
+    def test_imports_ecdict_chinese_definitions(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "ecdict.csv"
+            with source.open("w", encoding="utf-8", newline="") as stream:
+                writer = csv.DictWriter(stream, fieldnames=("word", "phonetic", "translation"))
+                writer.writeheader()
+                writer.writerow({"word": "Book", "phonetic": "bʊk", "translation": "n. 书\\nv. 预订"})
+                writer.writerow({"word": "empty", "phonetic": "", "translation": ""})
+
+            entries = importer.import_ecdict(source)
+            self.assertEqual(["/bʊk/\nn. 书\nv. 预订"], entries["book"])
+            self.assertNotIn("empty", entries)
 
     def test_writes_deterministic_plain_text_stardict(self):
         with tempfile.TemporaryDirectory() as temporary:
