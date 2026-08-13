@@ -77,3 +77,6 @@ Release tags use `dictionaries-m1-r<N>`. The workflow uploads data files first
 and `dictionaries.json` last; clients ignore releases without a complete
 manifest. GitHub stays draft and Gitee stays prerelease until their uploaded files pass SHA-256
 verification against the same staged release.
+GitHub also publishes `SHA256SUMS`. Gitee omits that redundant attachment to stay within its
+10-attachment Release limit; every mirrored device file is still downloaded and verified against
+the staged SHA-256 before the Gitee release is made public.
