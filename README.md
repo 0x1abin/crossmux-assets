@@ -25,6 +25,7 @@ Only dictionaries whose licence permits redistribution are accepted. IDs are
 ASCII letters, digits, `_` or `-`, at most 31 bytes. StarDict indexes must be
 uncompressed and use 32-bit offsets. Individual files must be smaller than
 100,000,000 bytes so the release can be mirrored to Gitee.
+The optional `nameZh` field supplies the display name returned by the API for `lang=ZH_CN`.
 
 The catalog contains:
 

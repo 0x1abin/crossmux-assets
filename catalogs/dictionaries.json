@@ -1,10 +1,11 @@
 {
   "version": 1,
-  "revision": 5,
+  "revision": 6,
   "dictionaries": [
     {
       "id": "century-en-zh",
       "name": "21st Century English ↔ Chinese",
+      "nameZh": "21世纪英汉汉英双向词典",
       "description": "Bidirectional English-Chinese definitions from the StarDict catalog, normalized for CrossMux",
       "languages": ["en", "zh"],
       "revision": 1,
@@ -17,6 +18,7 @@
     {
       "id": "ecdict-en-zh",
       "name": "ECDICT English → Chinese",
+      "nameZh": "ECDICT 英汉词典",
       "description": "English-Chinese definitions from the ECDICT base CSV, normalized for CrossMux",
       "languages": ["en", "zh"],
       "revision": 1,
@@ -29,6 +31,7 @@
     {
       "id": "freedict-en-zh",
       "name": "FreeDict English → Chinese",
+      "nameZh": "FreeDict 英汉词典",
       "description": "English-Chinese definitions from FreeDict and WikDict, normalized for CrossMux",
       "languages": ["en", "zh"],
       "revision": 1,
@@ -41,6 +44,7 @@
     {
       "id": "langdao-en-zh",
       "name": "Langdao English → Chinese",
+      "nameZh": "朗道英汉字典 5.0",
       "description": "Langdao 5.0 English-Chinese definitions from the StarDict catalog, normalized for CrossMux",
       "languages": ["en", "zh"],
       "revision": 1,
@@ -53,6 +57,7 @@
     {
       "id": "lazyworm-en-zh",
       "name": "Lazyworm English → Chinese",
+      "nameZh": "懒虫简明英汉词典",
       "description": "Concise English-Chinese definitions from the StarDict catalog, normalized for CrossMux",
       "languages": ["en", "zh"],
       "revision": 1,
@@ -65,6 +70,7 @@
     {
       "id": "modern-chinese-zh-zh",
       "name": "Modern Chinese Dictionary",
+      "nameZh": "现代汉语词典（修正版）",
       "description": "Modern Chinese definitions from the corrected StarDict catalog edition, normalized for CrossMux",
       "languages": ["zh"],
       "revision": 1,
@@ -77,6 +83,7 @@
     {
       "id": "oewn-en-en",
       "name": "Open English WordNet 2025",
+      "nameZh": "Open English WordNet 2025（英英）",
       "description": "English definitions from Open English WordNet 2025, normalized for CrossMux",
       "languages": ["en"],
       "revision": 1,
@@ -89,6 +96,7 @@
     {
       "id": "quick-en-zh-specialized",
       "name": "Quick English-Chinese Specialized",
+      "nameZh": "英汉专业词典",
       "description": "Specialized English-Chinese terminology from the StarDict catalog, normalized for CrossMux",
       "languages": ["en", "zh"],
       "revision": 1,
@@ -101,6 +109,7 @@
     {
       "id": "xinhua-zh-zh",
       "name": "Xinhua Chinese Dictionary",
+      "nameZh": "新华字典",
       "description": "Chinese character definitions from the StarDict catalog, converted from HTML to plain text",
       "languages": ["zh"],
       "revision": 1,

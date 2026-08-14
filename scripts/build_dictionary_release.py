@@ -141,6 +141,10 @@ def load_catalog(path: Path) -> dict:
             value = entry.get(key)
             if not isinstance(value, str) or not value.strip() or len(value.encode("utf-8")) > limit:
                 raise BuildError(f"{dictionary_id}: {key} must be 1-{limit} UTF-8 bytes")
+        if "nameZh" in entry:
+            value = entry["nameZh"]
+            if not isinstance(value, str) or not value.strip() or len(value.encode("utf-8")) > 64:
+                raise BuildError(f"{dictionary_id}: nameZh must be 1-64 UTF-8 bytes")
         item_revision = entry.get("revision")
         if (
             not isinstance(item_revision, int)

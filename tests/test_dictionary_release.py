@@ -33,6 +33,7 @@ class DictionaryReleaseTest(unittest.TestCase):
         return {
             "id": dictionary_id,
             "name": "WikDict English → Chinese",
+            "nameZh": "WikDict 英汉词典",
             "description": "English-Chinese Wiktionary dictionary",
             "languages": ["en", "zh"],
             "revision": 3,
@@ -58,6 +59,7 @@ class DictionaryReleaseTest(unittest.TestCase):
 
         self.assertEqual(7, manifest["revision"])
         self.assertEqual(["aaa", "wikdict-en-zh"], [item["id"] for item in manifest["dictionaries"]])
+        self.assertEqual("WikDict 英汉词典", manifest["dictionaries"][1]["nameZh"])
         output_files = manifest["dictionaries"][1]["files"]
         idx = next(item for item in output_files if item["name"].endswith(".idx"))
         idx_path = self.root / "dictionaries" / "wikdict-en-zh" / "wikdict-en-zh.idx"
@@ -145,6 +147,20 @@ class DictionaryReleaseTest(unittest.TestCase):
         data.write_bytes(b"definition")
         (ifo.parent / "nested").mkdir()
         with self.assertRaisesRegex(release.BuildError, "unexpected files"):
+            release.build_manifest(self.root, catalog)
+
+    def test_rejects_invalid_chinese_name(self):
+        entry = self.entry()
+        entry["nameZh"] = " "
+        catalog = self.write_catalog([entry])
+        with self.assertRaisesRegex(release.BuildError, "nameZh"):
+            release.build_manifest(self.root, catalog)
+
+        entry["nameZh"] = "词" * 22
+        catalog.write_text(
+            json.dumps({"version": 1, "revision": 1, "dictionaries": [entry]}), encoding="utf-8"
+        )
+        with self.assertRaisesRegex(release.BuildError, "nameZh"):
             release.build_manifest(self.root, catalog)
 
     def test_rejects_invalid_index_ranges_order_and_definition_size(self):
