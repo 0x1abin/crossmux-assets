@@ -1,0 +1,8 @@
+StarDict's dict ifo file
+version=3.0.0
+bookname=英汉专业词典
+wordcount=629275
+idxfilesize=15961864
+sametypesequence=m
+date=2005-10-09
+description=英汉专业词典, GPL as listed by the StarDict catalog, normalized to plain-text StarDict by CrossMux; source: https://stardict.uber.space/zh_CN/stardict-quick_eng-zh_CN-2.4.2.tar.bz2

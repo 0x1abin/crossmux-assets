@@ -73,6 +73,31 @@ class DictionaryImportTest(unittest.TestCase):
             self.assertEqual(["/bʊk/\nn. 书\nv. 预订"], entries["book"])
             self.assertNotIn("empty", entries)
 
+    def test_imports_stardict_and_converts_html(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            archive = Path(temporary) / "source.tar.bz2"
+            definitions = [b"<div>first &amp; one</div>", b"<p>second</p>", b"<img src='x.png'>"]
+            dictionary = b"".join(definitions)
+            index = bytearray()
+            offset = 0
+            for headword, definition in zip(("Book", "book", "image-only"), definitions):
+                index.extend(headword.encode("utf-8") + b"\0")
+                index.extend(struct.pack(">II", offset, len(definition)))
+                offset += len(definition)
+            with tarfile.open(archive, "w:bz2") as bundle:
+                for name, data in (
+                    ("fixture/fixture.idx", index),
+                    ("fixture/fixture.dict.dz", gzip.compress(dictionary)),
+                    ("fixture/fixture.ifo", b"sametypesequence=h\n"),
+                ):
+                    info = tarfile.TarInfo(name)
+                    info.size = len(data)
+                    bundle.addfile(info, io.BytesIO(data))
+
+            entries = importer.import_stardict(archive, "fixture")
+            self.assertEqual(["first & one", "second"], entries["book"])
+            self.assertNotIn("image-only", entries)
+
     def test_writes_deterministic_plain_text_stardict(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

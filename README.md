@@ -33,6 +33,12 @@ The catalog contains:
 | `ecdict-en-zh` | ECDICT `82c9872` | 768,739 | MIT |
 | `oewn-en-en` | Open English WordNet 2025 | 131,603 | CC BY 4.0 |
 | `freedict-en-zh` | FreeDict/WikDict 2025.11.23 | 24,786 | CC BY-SA 3.0 |
+| `century-en-zh` | StarDict 2.4.2 | 212,720 | GPL (StarDict catalog) |
+| `langdao-en-zh` | StarDict 2.4.2 | 435,468 | GPL (StarDict catalog) |
+| `lazyworm-en-zh` | StarDict 2.4.2 | 448,687 | GPL (StarDict catalog) |
+| `quick-en-zh-specialized` | StarDict 2.4.2 | 629,275 | GPL (StarDict catalog) |
+| `xinhua-zh-zh` | StarDict 2.4.2 | 73,027 | GPL (StarDict catalog) |
+| `modern-chinese-zh-zh` | StarDict 2.4.2 | 57,507 | GPL (StarDict catalog) |
 
 The checked-in resources are deterministic plain-text StarDict conversions.
 Open English WordNet exception forms are included as lookup aliases. FreeDict
@@ -50,7 +56,7 @@ checked-in resources:
 python3 scripts/import_dictionary_sources.py --check
 ```
 
-For an offline rebuild, place the three source filenames declared in the import
+For an offline rebuild, place the source filenames declared in the import
 script in one directory and pass `--source-dir <directory>`. The importer checks
 these SHA-256 values before reading any source:
 
@@ -63,6 +69,24 @@ freedict-eng-zho-2025.11.23.stardict.tar.xz
 
 ecdict.csv
 1a6947e04785db63613a92e14903cdae7954f7e84860b10e68e5c7cbb3f9c3cf
+
+stardict-21shijishuangxiangcidian-2.4.2.tar.bz2
+718e15eb91e92294f8663e911f03d14b220e52bebe2e7e57565c107162ef8b7b
+
+stardict-langdao-ec-gb-2.4.2.tar.bz2
+68adfd6348418725b1810b5aeda2506ce44ddbc1ad99f2f68f6ba135cd3bf03c
+
+stardict-lazyworm-ec-2.4.2.tar.bz2
+38e5877f48c71df393337d5b5b5b3814cb3477c9d202395adc6d0c47d3ed0a81
+
+stardict-quick_eng-zh_CN-2.4.2.tar.bz2
+488d9ea8ea92c86489409cbd0db4a6568e08a435b7e73ec2821fb8a781923627
+
+stardict-xhzd-2.4.2.tar.bz2
+24745da6439f7aafd540661aa2cc20096c6fb7aca24dc62a1fb4b65e0822e646
+
+stardict-xiandaihanyucidian_fix-2.4.2.tar.bz2
+1dcf68f876bcecfd2c391f9a6232c3fafba6e00d2db50c302ffd8ca813842ec5
 ```
 
 Validate and stage a release without network access:
@@ -77,6 +101,6 @@ Release tags use `dictionaries-m1-r<N>`. The workflow uploads data files first
 and `dictionaries.json` last; clients ignore releases without a complete
 manifest. GitHub stays draft and Gitee stays prerelease until their uploaded files pass SHA-256
 verification against the same staged release.
-GitHub also publishes `SHA256SUMS`. Gitee omits that redundant attachment to stay within its
-10-attachment Release limit; every mirrored device file is still downloaded and verified against
-the staged SHA-256 before the Gitee release is made public.
+GitHub also publishes `SHA256SUMS`. Gitee omits that redundant attachment, while every mirrored
+device file is still downloaded and verified against the staged SHA-256 before the Gitee release
+is made public.

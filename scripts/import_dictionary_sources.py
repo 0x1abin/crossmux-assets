@@ -58,7 +58,58 @@ SOURCES = (
         ),
         sha256="1a6947e04785db63613a92e14903cdae7954f7e84860b10e68e5c7cbb3f9c3cf",
     ),
+    Source(
+        dictionary_id="century-en-zh",
+        filename="stardict-21shijishuangxiangcidian-2.4.2.tar.bz2",
+        url=(
+            "https://stardict.uber.space/zh_CN/"
+            "stardict-21shijishuangxiangcidian-2.4.2.tar.bz2"
+        ),
+        sha256="718e15eb91e92294f8663e911f03d14b220e52bebe2e7e57565c107162ef8b7b",
+    ),
+    Source(
+        dictionary_id="langdao-en-zh",
+        filename="stardict-langdao-ec-gb-2.4.2.tar.bz2",
+        url="https://stardict.uber.space/zh_CN/stardict-langdao-ec-gb-2.4.2.tar.bz2",
+        sha256="68adfd6348418725b1810b5aeda2506ce44ddbc1ad99f2f68f6ba135cd3bf03c",
+    ),
+    Source(
+        dictionary_id="lazyworm-en-zh",
+        filename="stardict-lazyworm-ec-2.4.2.tar.bz2",
+        url="https://stardict.uber.space/zh_CN/stardict-lazyworm-ec-2.4.2.tar.bz2",
+        sha256="38e5877f48c71df393337d5b5b5b3814cb3477c9d202395adc6d0c47d3ed0a81",
+    ),
+    Source(
+        dictionary_id="quick-en-zh-specialized",
+        filename="stardict-quick_eng-zh_CN-2.4.2.tar.bz2",
+        url="https://stardict.uber.space/zh_CN/stardict-quick_eng-zh_CN-2.4.2.tar.bz2",
+        sha256="488d9ea8ea92c86489409cbd0db4a6568e08a435b7e73ec2821fb8a781923627",
+    ),
+    Source(
+        dictionary_id="xinhua-zh-zh",
+        filename="stardict-xhzd-2.4.2.tar.bz2",
+        url="https://stardict.uber.space/zh_CN/stardict-xhzd-2.4.2.tar.bz2",
+        sha256="24745da6439f7aafd540661aa2cc20096c6fb7aca24dc62a1fb4b65e0822e646",
+    ),
+    Source(
+        dictionary_id="modern-chinese-zh-zh",
+        filename="stardict-xiandaihanyucidian_fix-2.4.2.tar.bz2",
+        url=(
+            "https://stardict.uber.space/zh_CN/"
+            "stardict-xiandaihanyucidian_fix-2.4.2.tar.bz2"
+        ),
+        sha256="1dcf68f876bcecfd2c391f9a6232c3fafba6e00d2db50c302ffd8ca813842ec5",
+    ),
 )
+
+STARDICT_SOURCES = {
+    "century-en-zh": ("21shijishuangxiangcidian", "21世纪英汉汉英双向词典", "2007-01-17"),
+    "langdao-en-zh": ("langdao-ec-gb", "朗道英汉字典 5.0", "2003-08-26"),
+    "lazyworm-en-zh": ("lazyworm-ec", "懒虫简明英汉词典", "2006-05-17"),
+    "quick-en-zh-specialized": ("quick_eng-zh_CN", "英汉专业词典", "2005-10-09"),
+    "xinhua-zh-zh": ("xhzd", "新华字典", "unknown"),
+    "modern-chinese-zh-zh": ("xiandaihanyucidian_fix", "现代汉语词典（修正版）", "2007-07-08"),
+}
 
 POS_NAMES = {"n": "noun", "v": "verb", "a": "adjective", "s": "adjective", "r": "adverb"}
 ASCII_LOWER = bytes.maketrans(b"ABCDEFGHIJKLMNOPQRSTUVWXYZ", b"abcdefghijklmnopqrstuvwxyz")
@@ -179,6 +230,40 @@ def import_freedict(archive: Path) -> dict[str, list[str]]:
         except UnicodeDecodeError as exc:
             raise ImportError(f"FreeDict definition is not UTF-8: {headword!r}") from exc
         append_definition(entries, headword, html_to_text(definition))
+    return entries
+
+
+def import_stardict(archive: Path, stem: str) -> dict[str, list[str]]:
+    with tarfile.open(archive, "r:bz2") as bundle:
+        members = {Path(member.name).name: member for member in bundle.getmembers() if member.isfile()}
+        try:
+            index = bundle.extractfile(members[f"{stem}.idx"])
+            dictionary = bundle.extractfile(members[f"{stem}.dict.dz"])
+            metadata = bundle.extractfile(members[f"{stem}.ifo"])
+        except KeyError as exc:
+            raise ImportError(f"missing StarDict archive member: {exc}") from exc
+        if index is None or dictionary is None or metadata is None:
+            raise ImportError("StarDict archive contains a non-file member")
+        index_data = index.read()
+        dictionary_data = gzip.decompress(dictionary.read())
+        ifo = metadata.read().decode("utf-8")
+
+    values = dict(line.partition("=")[::2] for line in ifo.splitlines() if "=" in line)
+    sequence = values.get("sametypesequence")
+    if sequence not in {"m", "h"}:
+        raise ImportError(f"unsupported StarDict sametypesequence: {sequence!r}")
+
+    entries: dict[str, list[str]] = defaultdict(list)
+    for headword, offset, size in parse_stardict_index(index_data):
+        if size == 0 or offset + size > len(dictionary_data):
+            raise ImportError(f"StarDict definition is out of bounds: {headword!r}")
+        try:
+            definition = dictionary_data[offset : offset + size].decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ImportError(f"StarDict definition is not UTF-8: {headword!r}") from exc
+        definition = html_to_text(definition) if sequence == "h" else definition
+        if definition.strip():
+            append_definition(entries, headword, definition)
     return entries
 
 
@@ -349,6 +434,21 @@ def build_resources(source_dir: Path, output_root: Path) -> None:
             "source: https://en-word.net/downloads"
         ),
     )
+    source_by_id = {source.dictionary_id: source for source in SOURCES}
+    for dictionary_id, (stem, name, date) in STARDICT_SOURCES.items():
+        source = source_by_id[dictionary_id]
+        write_stardict(
+            output_root,
+            dictionary_id,
+            import_stardict(sources[dictionary_id], stem),
+            name=name,
+            date=date,
+            dictzip=True,
+            description=(
+                f"{name}, GPL as listed by the StarDict catalog, normalized to plain-text StarDict "
+                f"by CrossMux; source: {source.url}"
+            ),
+        )
     write_stardict(
         output_root,
         "freedict-en-zh",

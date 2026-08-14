@@ -1,0 +1,8 @@
+StarDict's dict ifo file
+version=3.0.0
+bookname=现代汉语词典（修正版）
+wordcount=57507
+idxfilesize=889401
+sametypesequence=m
+date=2007-07-08
+description=现代汉语词典（修正版）, GPL as listed by the StarDict catalog, normalized to plain-text StarDict by CrossMux; source: https://stardict.uber.space/zh_CN/stardict-xiandaihanyucidian_fix-2.4.2.tar.bz2
