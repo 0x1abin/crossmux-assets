@@ -1,0 +1,8 @@
+StarDict's dict ifo file
+version=3.0.0
+bookname=懒虫简明英汉词典
+wordcount=448687
+idxfilesize=10054299
+sametypesequence=m
+date=2006-05-17
+description=懒虫简明英汉词典, GPL as listed by the StarDict catalog, normalized to plain-text StarDict by CrossMux; source: https://stardict.uber.space/zh_CN/stardict-lazyworm-ec-2.4.2.tar.bz2

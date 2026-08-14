@@ -1,0 +1,67 @@
+name: Publish dictionaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      gitee_only:
+        description: Replace an incomplete Gitee prerelease without republishing GitHub
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GITEE_REPO: x1abin/crossmux-assets
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+      - run: python3 -m unittest discover -s tests -v
+      - run: python3 scripts/build_dictionary_release.py --check
+      - name: Stage release
+        id: release
+        run: |
+          mkdir dist
+          python3 scripts/build_dictionary_release.py --output-dir dist >/dev/null
+          revision="$(python3 -c 'import json; print(json.load(open("dist/dictionaries.json"))["revision"])')"
+          echo "tag=dictionaries-m1-r${revision}" >> "$GITHUB_OUTPUT"
+      - name: Publish immutable GitHub release
+        if: ${{ !inputs.gitee_only }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ steps.release.outputs.tag }}"
+          ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1
+          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --draft --title "CrossMux dictionaries ${tag}" \
+            --notes "Immutable StarDict resources for CrossMux."
+          find dist -maxdepth 1 -type f ! -name dictionaries.json -print0 | sort -z | \
+            xargs -0 gh release upload "$tag" --repo "$GITHUB_REPOSITORY"
+          gh release upload "$tag" dist/dictionaries.json --repo "$GITHUB_REPOSITORY"
+      - name: Verify GitHub release
+        if: ${{ !inputs.gitee_only }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir github-release
+          gh release download "${{ steps.release.outputs.tag }}" --repo "$GITHUB_REPOSITORY" --dir github-release
+          cd github-release
+          sha256sum --check SHA256SUMS
+      - name: Publish verified GitHub release
+        if: ${{ !inputs.gitee_only }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "${{ steps.release.outputs.tag }}" --repo "$GITHUB_REPOSITORY" --draft=false
+      - name: Mirror exact assets to Gitee
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          GITEE_TRANSFER_TIMEOUT: 7200
+          REPLACE_GITEE_PRERELEASE: ${{ inputs.gitee_only && '1' || '' }}
+        run: |
+          mapfile -d '' assets < <(find dist -maxdepth 1 -type f ! -name dictionaries.json ! -name SHA256SUMS -print0 | sort -z)
+          assets+=(dist/dictionaries.json)
+          bash scripts/publish_gitee_release.sh "$GITEE_REPO" "${{ steps.release.outputs.tag }}" "${assets[@]}"
